@@ -8,7 +8,7 @@ public class Sensors {
     public RevColorSensorV3 intakeColorSensor;
 
     public Sensors(HardwareMap hardwareMap) {
-        intakeColorSensor = hardwareMap.get(RevColorSensorV3.class, "intakecolor");
+        // intakeColorSensor = hardwareMap.get(RevColorSensorV3.class, "intakecolor");
     }
 }
 

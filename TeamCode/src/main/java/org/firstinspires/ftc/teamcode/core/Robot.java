@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.core;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
+import com.arcrobotics.ftclib.hardware.ServoEx;
+import com.arcrobotics.ftclib.hardware.motors.CRServo;
 import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.qualcomm.hardware.rev.RevBlinkinLedDriver;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -10,6 +12,9 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.ServoController;
+
 import org.firstinspires.ftc.teamcode.core.auxiliary.Blinkin;
 import org.firstinspires.ftc.teamcode.core.params.RobotParameters;
 import org.firstinspires.ftc.teamcode.core.state.RobotState;
@@ -40,7 +45,7 @@ public class Robot {
         blinkin = new Blinkin(hardwareMap);
 
         drivetrain = new Drivetrain(hardwareMap);
-        drivetrain.PositionTracker.position.fromComponent(0.0, 0.0);
+        // drivetrain.PositionTracker.position.fromComponent(0.0, 0.0);
         imu = new RobotIMU(hardwareMap);
         sensors = new Sensors(hardwareMap);
         states = new States();
@@ -59,8 +64,8 @@ public class Robot {
         public Motors motors;
         public Servos servos;
         public MotorPowers MotorPowers;
-        public ServoPositions ServoPositions;
         public PairPositions PairPositions;
+        public ServoPositions ServoPositions;
         public PositionTracker PositionTracker;
 
         public Drivetrain(HardwareMap hardwareMap) {
@@ -68,10 +73,10 @@ public class Robot {
             servos = new Servos(hardwareMap);
             imu = new RobotIMU(hardwareMap);
             MotorPowers = new MotorPowers();
-            ServoPositions = new ServoPositions();
             PairPositions = new PairPositions();
-            motors.rightSlide.resetEncoder();
-            motors.leftSlide.resetEncoder();
+            ServoPositions = new ServoPositions();
+            //motors.rightSlide.resetEncoder();
+            //motors.leftSlide.resetEncoder();
         }
 
         public class PositionTracker {
@@ -99,8 +104,10 @@ public class Robot {
         }
 
         public class ServoPositions {
-            public double armServo = 0.0;
-            public double bucketServo =  0.0;
+            public double armServo = RobotParameters.ServoBounds.armServoLower;
+            public double bucketServo = 0.0;
+            public double armCurrent = armServo;
+            public double armError = 0.0;
         }
 
         private void componentDrive(double forwardPower, double rightPower) {
@@ -154,6 +161,20 @@ public class Robot {
             }
         }
 
+        public void moveArm() {
+            double error = ServoPositions.armServo - ServoPositions.armCurrent;
+            double response = imu.calculate_PID(0.01, 0.1, error, ServoPositions.armError);
+            ServoPositions.armError = error;
+            response *= 0.6;
+            ServoPositions.armCurrent += response;
+            if (ServoPositions.armCurrent > RobotParameters.ServoBounds.armServoUpper) {
+                ServoPositions.armCurrent = RobotParameters.ServoBounds.armServoUpper;
+            } else if (ServoPositions.armCurrent < RobotParameters.ServoBounds.armServoLower) {
+                ServoPositions.armCurrent = RobotParameters.ServoBounds.armServoLower;
+            }
+            telemetry.addData("error", ServoPositions.armError);
+        }
+
         public void calculateMovementVectorFromWheelRotations() {
             double w1Rad = Math.toRadians(motors.leftFront.getCurrentPosition() - PositionTracker.fl);
             PositionTracker.fl = motors.leftFront.getCurrentPosition();
@@ -202,14 +223,28 @@ public class Robot {
             if (controller.yPress == 1.0) {
                 PairPositions.outTake = 200.0 - PairPositions.outTake;
             }
-            telemetry.addData("armServo", servos.armServo.getCurrentPosition());
-            controller.updateKeyTracker(gamepad);
-            MotorPowers.leftIntake = intakePower;
-            MotorPowers.rightIntake = intakePower;
-            componentDrive(my, mx);
 
+            controller.updateKeyTracker(gamepad);
+
+            if (controller.aPress == 1.0) {
+                if (ServoPositions.armServo == RobotParameters.ServoBounds.armServoLower) {
+                    ServoPositions.armServo = RobotParameters.ServoBounds.armServoUpper;
+                } else {
+                    ServoPositions.armServo = RobotParameters.ServoBounds.armServoLower;
+                }
+                if (ServoPositions.bucketServo == RobotParameters.ServoBounds.bucketServoLower) {
+                    ServoPositions.bucketServo = RobotParameters.ServoBounds.bucketServoUpper;
+                } else {
+                    ServoPositions.bucketServo = RobotParameters.ServoBounds.bucketServoLower;
+                }
+            }
+
+
+            // MotorPowers.leftIntake = intakePower;
+            // MotorPowers.rightIntake = intakePower;
+            // componentDrive(my, mx);
             // Experimental position tracking
-            calculateMovementVectorFromWheelRotations();
+            // calculateMovementVectorFromWheelRotations();
         }
 
         public void setMotorPowers() {
@@ -217,21 +252,26 @@ public class Robot {
             motors.rightFront.set(MotorPowers.rightFront);
             motors.leftBack.set(MotorPowers.leftBack);
             motors.rightBack.set(MotorPowers.rightBack);
-            motors.leftIntake.set(MotorPowers.leftIntake);
-            motors.rightIntake.set(MotorPowers.rightIntake);
-            motors.leftSlide.set(MotorPowers.leftSlide);
-            motors.rightSlide.set(MotorPowers.rightSlide);
+            // motors.leftIntake.set(MotorPowers.leftIntake);
+            // motors.rightIntake.set(MotorPowers.rightIntake);
+            // motors.leftSlide.set(MotorPowers.leftSlide);
+            // motors.rightSlide.set(MotorPowers.rightSlide);
         }
 
         public void setServoPositions() {
-            servos.bucketServo.set(ServoPositions.bucketServo);
-            servos.armServo.set(ServoPositions.armServo);
+            servos.armServo.setPosition(ServoPositions.armCurrent);
+            double bucketPos = ServoPositions.armCurrent * 0.4;
+            if (bucketPos > RobotParameters.ServoBounds.bucketServoLower) {
+                bucketPos = RobotParameters.ServoBounds.bucketServoLower;
+            }
+            servos.bucketServo.setPosition(bucketPos);
         }
 
         public void drive(GamepadEx gamepad) {
             calculateMovement(gamepad);
+            // movePairs();
+            moveArm();
             setServoPositions();
-            movePairs();
             setMotorPowers();
         }
     }
@@ -272,18 +312,6 @@ public class Robot {
             double rawError = targetYaw - getYawDegrees();
             if (rawError <= -180.0) { rawError += 360.0; }
             if (rawError > 180.0) { rawError -= 360.0; }
-            if (rawError >= RobotParameters.IMU.PIDcorrectionThreshold) {
-                blinkin.setRightLights(RevBlinkinLedDriver.BlinkinPattern.RED);
-                blinkin.setLeftLights(RevBlinkinLedDriver.BlinkinPattern.GREEN);
-            }
-            else if (rawError <= -RobotParameters.IMU.PIDcorrectionThreshold) {
-                blinkin.setRightLights(RevBlinkinLedDriver.BlinkinPattern.GREEN);
-                blinkin.setLeftLights(RevBlinkinLedDriver.BlinkinPattern.RED);
-            }
-            else {
-                blinkin.setRightLights(RevBlinkinLedDriver.BlinkinPattern.GREEN);
-                blinkin.setLeftLights(RevBlinkinLedDriver.BlinkinPattern.GREEN);
-            }
             if (Math.abs(rawError) > RobotParameters.IMU.PIDcorrectionThreshold) {
                 // Now calculate PID.
                 double response = calculate_PID(0.75, 0.35, rawError, lastError) / 30;

@@ -68,4 +68,11 @@ public class RobotParameters {
         public static final double correctionMultiplier = 1.0;
         public static final double rotationMinimumThreshold = 0.0;
     }
+
+    public static final class ServoBounds {
+        public static final double armServoLower = 0.0;
+        public static final double armServoUpper = 1.0;
+        public static final double bucketServoLower = 0.7;
+        public static final double bucketServoUpper = 0.0;
+    }
 }

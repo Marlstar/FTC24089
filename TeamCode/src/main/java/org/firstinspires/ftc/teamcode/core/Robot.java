@@ -112,14 +112,14 @@ public class Robot {
 
         private void componentDrive(double forwardPower, double rightPower) {
             Vec2 powerVec2 = new Vec2();
-            double r = imu.yawCorrection();
+            double r = -imu.yawCorrection();
             double movementMultiplier = 1.0;
 //            double denominator = Math.abs(forwardPower) + Math.abs(rightPower);
             powerVec2.fromComponent(rightPower, forwardPower);
-            MotorPowers.leftFront = ((rightPower * -1 + forwardPower) * movementMultiplier + r);
-            MotorPowers.rightFront = ((rightPower + forwardPower) * movementMultiplier - r);
-            MotorPowers.leftBack = ((rightPower + forwardPower) * movementMultiplier + r);
-            MotorPowers.rightBack = ((rightPower * -1 + forwardPower) * movementMultiplier - r);
+            MotorPowers.leftFront = ((rightPower + forwardPower) * movementMultiplier + r);
+            MotorPowers.rightFront = ((-rightPower + forwardPower) * movementMultiplier - r);
+            MotorPowers.leftBack = ((-rightPower - forwardPower) * movementMultiplier + r);
+            MotorPowers.rightBack = ((rightPower - forwardPower) * movementMultiplier - r);
         }
 
         private void driveInDirection(double direction, double power, boolean fieldCentric) {
@@ -163,7 +163,7 @@ public class Robot {
 
         public void moveArm() {
             double error = ServoPositions.armServo - ServoPositions.armCurrent;
-            double response = imu.calculate_PID(0.01, 0.1, error, ServoPositions.armError);
+            double response = imu.calculate_PID(0.03, 0.1, error, ServoPositions.armError);
             ServoPositions.armError = error;
             response *= 0.6;
             ServoPositions.armCurrent += response;
@@ -242,7 +242,7 @@ public class Robot {
 
             // MotorPowers.leftIntake = intakePower;
             // MotorPowers.rightIntake = intakePower;
-            // componentDrive(my, mx);
+            componentDrive(my, mx);
             // Experimental position tracking
             // calculateMovementVectorFromWheelRotations();
         }
@@ -260,7 +260,7 @@ public class Robot {
 
         public void setServoPositions() {
             servos.armServo.setPosition(ServoPositions.armCurrent);
-            double bucketPos = ServoPositions.armCurrent * 0.4;
+            double bucketPos = ServoPositions.armCurrent * 0.6;
             if (bucketPos > RobotParameters.ServoBounds.bucketServoLower) {
                 bucketPos = RobotParameters.ServoBounds.bucketServoLower;
             }
